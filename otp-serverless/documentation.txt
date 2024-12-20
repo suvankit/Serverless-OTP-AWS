@@ -1,0 +1,106 @@
++-------+
+| Client|
++---+---+
+    |
+    | 1. Send API Request
+    |
++---v---+      +-------------+
+|  Web  |----->|  API        |
+| Browser|      |  Gateway    |
++---+---+      +-------+-----+
+    ^                  |
+    |                  |
+    |                  | 2. Route Request
+    |                  |
+    |     +------------v--------------+
+    |     |        Route 53           |
+    |     |     (DNS Load Balancing)  |
+    |     +------------+---------------+
+    |                  |
+    |                  | 3. Distribute Traffic
+    |                  |
+    |     +------------v--------------+
+    |     |        AWS Fargate        |
+    |     | +----------------+        |
+    |     | | Container       |        |
+    |     | | (FastAPI App)   |        |
+    |     | +----------------+        |
+    |     +------------+---------------+
+    |                  |
+    |                  | 4. Generate OTP & Session ID
+    |                  |
+    |     +------------v--------------+
+    |     |      Lambda Function      |
+    |     |    (generate-otp.py)      |
+    |     +------------+---------------+
+    |                  |
+    |                  | 5. Store OTP & Session ID
+    |                  |
+    |     +------------v--------------+
+    |     |        DynamoDB           |
+    |     +------------+---------------+
+    |                  |
+    |                  | 6. Trigger DynamoDB Stream
+    |                  |
+    |     +------------v--------------+
+    |     |      Lambda Function      |
+    |     |     (send-email.py)       |
+    |     +------------+---------------+
+    |                  |
+    |                  | 7. Send OTP to User's Email
+    |                  |
+    |     +------------v--------------+
+    |     |        Amazon SES         |
+    |     +------------+---------------+
+    |                  |
+    |                  | 8. Enter OTP
+    |                  |
+    |     +------------v--------------+
+    |     |      Lambda Function      |
+    |     |     (verify-otp.py)       |
+    |     +------------+---------------+
+    |                  |
+    |                  | 9. Verify OTP
+    |                  |
+    |     +------------v--------------+
+    |     |        DynamoDB           |
+    |     +------------+---------------+
+    |                  |
+    +------------------+
+                       |
+                       | 10. CI/CD Pipeline
+                       |
+    +------------------v--------------+
+    |           Jenkins Server        |
+    +------------------+---------------+
+                       |
+                       | 11. Build and Push
+                       |
+    +------------------v--------------+
+    |           AWS ECR              |
+    |     (Docker Image Repository)  |
+    +------------------+---------------+
+                       |
+                       | 12. Deploy New Image
+                       |
+    +------------------v--------------+
+    |        AWS Fargate             |
+    |   (Containerized Application)   |
+    +------------------+---------------+
+
+This diagram illustrates the complete serverless solution, including the client interaction, API Gateway, DNS-based load balancing with Route 53, Fargate for hosting the containerized FastAPI application, Lambda functions for OTP generation, email sending, and verification, integration with DynamoDB and Amazon SES, and the CI/CD pipeline with Jenkins and ECR for automated builds and deployments.
+
+Explanation:
+
+1.The client (web browser) sends an API request to the Amazon API Gateway.
+2.API Gateway routes the request to AWS Route 53 for DNS load balancing.
+3.Route 53 performs DNS-based load balancing and distributes the traffic across the Fargate containers hosting the FastAPI application.
+4.The FastAPI application running on Fargate generates an OTP and session ID by invoking the generate-otp.py Lambda function.
+5.The generate-otp.py Lambda function stores the OTP and session ID in DynamoDB.
+6.The DynamoDB stream triggers the send-email.py Lambda function.
+7.The send-email.py Lambda function sends the OTP to the user's email address using Amazon SES.
+8.The client enters the received OTP in the FastAPI application.
+9.The FastAPI application verifies the OTP by invoking the verify-otp.py Lambda function, which queries DynamoDB.
+10.A CI/CD pipeline is set up using Jenkins to automate the build and deployment process.
+11.The Jenkins pipeline builds the Docker image for the FastAPI application and pushes it to AWS Elastic Container Registry (ECR).
+12.AWS Fargate monitors ECR for new image updates and automatically deploys the new image as containers.
